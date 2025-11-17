@@ -1,0 +1,25 @@
+/* ===== 공통 리셋 ===== */
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+/* 기본 폰트 & 배경색 – 기준 서비스와 통일 */
+body {
+  font-family: "Pretendard", -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
+  background-color: #f5f7fb; /* 연한 회색-블루 배경 */
+  color: #111827;
+}
+
+/* 루트 영역이 화면 꽉 채우도록 */
+#root {
+  min-height: 100vh;
+}
+
+/* 폼 요소들도 폰트 통일 */
+button,
+input,
+select {
+  font-family: inherit;
+}
