@@ -6,6 +6,7 @@ import { api } from "../lib/api"; // ✅ axios 인스턴스 (src/lib/api.js)
 
 // ----- localStorage 유틸 -----
 const HIDDEN_KEY = "hiddenClaimKeys_v1";
+const POLL_INTERVAL = 10000; // 5초
 
 function getHiddenKeys() {
   try {
@@ -37,11 +38,11 @@ export default function NewUncheckedClaims() {
 
   // ✅ API 경로 (baseURL은 api.js에서 자동 설정)
   const LIST_API = `/api/claims?status=unchecked`;
-  const CONFIRM_API = (idOrKey) =>
-    `/api/claims/${encodeURIComponent(idOrKey)}/confirm`;
 
-  // ✅ true로 바꾸면 목록도 실제 서버에서 받아옴
-  const USE_SERVER_LIST = false;
+  const CONFIRM_API = (idOrKey) =>
+    `/api/claims/${encodeURIComponent(idOrKey)}/confirm`; 
+  // 확정 버튼 클릭 시 서버에 업로드하는 경로
+  const USE_SERVER_LIST = true;
 
   // 목록 불러오기
   const fetchClaims = async () => {
@@ -54,10 +55,11 @@ export default function NewUncheckedClaims() {
         rows = Array.isArray(res.data)
           ? res.data
           : Array.isArray(res.data?.claims)
-          ? res.data.claims
-          : [];
+            ? res.data.claims
+            : [];
       } else {
         // 서버 없이 로컬 테스트용 데이터
+        console.log("⚠️ 서버 연동 없이 로컬 테스트용 데이터 사용");
         rows = [
           {
             id: 1,
@@ -107,8 +109,19 @@ export default function NewUncheckedClaims() {
     }
   };
 
+  
+
   useEffect(() => {
-    fetchClaims();
+    fetchClaims(); // 최초 1회 로딩
+
+    if (!USE_SERVER_LIST) return;  // 서버 연동 안 하면 폴링 X
+
+    const id = setInterval(() => {
+      fetchClaims();   // 10초마다 목록 다시 받아옴
+    }, POLL_INTERVAL);
+
+    return () => clearInterval(id); // 언마운트 시 정리
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // OCR 수정화면에서 돌아올 때 데이터 반영

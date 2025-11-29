@@ -2,92 +2,7 @@
 import React, { useState } from "react";
 import "./Ocr_compare.css";
 import { useNavigate, useLocation } from "react-router-dom";
-
-/* ===== 국내 은행 3자리 코드 → 은행명 매핑 ===== */
-const BANK_CODE_MAP = {
-  "002": "산업은행",
-  "003": "기업은행",
-  "004": "국민은행",
-  "005": "하나은행",        // (구 외환 포함)
-  "007": "수협은행",
-  "008": "수출입은행",
-  "011": "농협은행",
-  "020": "우리은행",
-  "023": "SC제일은행",
-  "027": "씨티은행",
-  "031": "대구은행",
-  "032": "부산은행",
-  "034": "광주은행",
-  "035": "제주은행",
-  "037": "전북은행",
-  "039": "경남은행",
-  "045": "새마을금고",
-  "048": "신협",
-  "050": "저축은행",
-  "064": "산림조합",
-  "071": "우체국",
-  "081": "하나은행",
-  "088": "신한은행",
-  "089": "케이뱅크",
-  "090": "카카오뱅크",
-  "092": "토스뱅크",
-};
-
-/* 재사용 가능한 입력 컴포넌트 */
-function FieldBlock({
-  label,
-  img,
-  value,
-  onChange,
-  onBlur,
-  type = "text",
-  options,
-  placeholder,
-  error,
-  help,
-  children,
-}) {
-  return (
-    <div className="field-block">
-      <label>{label}</label>
-
-      <div className="pair">
-        {img && <img src={img} alt={`${label} OCR`} />}
-
-        <div className="pair-right">
-          {type === "select" ? (
-            <select value={value} onChange={(e) => onChange(e.target.value)}>
-              {options?.map((opt) => (
-                <option key={opt} value={opt}>{opt}</option>
-              ))}
-            </select>
-          ) : (
-            <input
-              type={type}
-              value={value}
-              placeholder={placeholder}
-              onChange={(e) => onChange(e.target.value)}
-              onBlur={onBlur}
-              className={error ? "input-error" : ""}
-            />
-          )}
-
-          {/* 입력창 바로 아래: 버튼 + 도움말 + 에러 모두 포함 */}
-          <div className="field-sub">
-            {children && <div className="field-children">{children}</div>}
-
-            {error ? (
-              <div className="error-text">{error}</div>
-            ) : help ? (
-              <div className="help-text">{help}</div>
-            ) : null}
-          </div>
-        </div>
-      </div>
-    </div>
-  );
-}
-
+import FieldBlock from "../component/FieldBlock";
 
 export default function Ocr_compare() {
   const navigate = useNavigate();
@@ -124,8 +39,6 @@ export default function Ocr_compare() {
     beneficiaryId: "",
   });
 
-  // 계좌 앞자리로 감지한 은행 후보
-  const [detectedBanks, setDetectedBanks] = useState([]);
 
   /* ---------------- 공통 유틸 / 검증 ---------------- */
 
@@ -175,36 +88,14 @@ export default function Ocr_compare() {
   const handleChangeAndValidate = (field, value) => {
     setHistory((prev) => [...prev, form]);
     setForm((prev) => ({ ...prev, [field]: value }));
-    setErrors((prev) => ({ ...prev, [field]: makeDigitMessage(field, value) }));
-  };
 
-  // 계좌번호 입력 시: 앞 3자리로 은행 추정
-  const handleAccountNumberChange = (value) => {
-    setHistory((prev) => [...prev, form]);
-    setForm((prev) => ({ ...prev, accountNumber: value }));
-
-    const digits = (value.match(/\d/g) || []).join("");
-    if (digits.length < 3) {
-      setDetectedBanks([]);
-      return;
-    }
-    const prefix = digits.slice(0, 3);
-    const bankName = BANK_CODE_MAP[prefix];
-
-    if (bankName) {
-      setDetectedBanks([{ code: prefix, name: bankName }]);
-    } else {
-      setDetectedBanks([]);
+    // phone, id 필드만 검증
+    const key = field.toLowerCase();
+    if (key.includes("phone") || key.includes("id")) {
+      setErrors((prev) => ({ ...prev, [field]: makeDigitMessage(field, value) }));
     }
   };
 
-  const applyDetectedBank = (bank) => {
-    setHistory((prev) => [...prev, form]);
-    setForm((prev) => ({
-      ...prev,
-      accountBank: bank.name,
-    }));
-  };
 
   const undoChange = () => {
     if (history.length === 0) {
@@ -221,16 +112,6 @@ export default function Ocr_compare() {
       beneficiaryPhone: makeDigitMessage("beneficiaryPhone", last.beneficiaryPhone),
       beneficiaryId: makeDigitMessage("beneficiaryId", last.beneficiaryId),
     });
-
-    const digits = (last.accountNumber || "").replace(/\D/g, "");
-    if (digits.length >= 3) {
-      const prefix = digits.slice(0, 3);
-      const bankName = BANK_CODE_MAP[prefix];
-      if (bankName) setDetectedBanks([{ code: prefix, name: bankName }]);
-      else setDetectedBanks([]);
-    } else {
-      setDetectedBanks([]);
-    }
   };
 
   const copyInsuredInfo = () => {
@@ -252,6 +133,7 @@ export default function Ocr_compare() {
   const validateForm = () => {
     if (Object.values(errors).some((e) => e)) {
       alert("입력 형식 오류를 먼저 확인해주세요.");
+      console.log("검증 오류:", errors);
       return;
     }
 
@@ -420,37 +302,18 @@ export default function Ocr_compare() {
             />
           </div>
 
-          {/* 계좌 정보 (계좌번호 → 은행명 순서) */}
+          {/* 계좌 정보 */}
           <div className="section">
             <h3>계좌 정보</h3>
 
-            {/* 1) 계좌번호 먼저 입력 */}
             <FieldBlock
               label="계좌번호"
               img="/피보험자연락처.png"
               value={form.accountNumber}
-              onChange={handleAccountNumberChange}
+              onChange={(v) => handleChangeAndValidate("accountNumber", v)}
               placeholder="000-0000-0000"
-              help="계좌 앞 3자리로 은행을 추정합니다."
-            >
-              {/* ➜ 계좌번호 입력창 바로 밑에 나오는 은행 버튼 */}
-              {detectedBanks.length > 0 && (
-                <div className="bank-chip-row">
-                  {detectedBanks.map((b) => (
-                    <button
-                      key={b.code}
-                      type="button"
-                      className="bank-chip"
-                      onClick={() => applyDetectedBank(b)}
-                    >
-                      {b.name}
-                    </button>
-                  ))}
-                </div>
-              )}
-            </FieldBlock>
+            />
 
-            {/* 2) 칩 클릭 시 채워질 은행명 */}
             <FieldBlock
               label="은행명"
               img="/피보험자연락처.png"
