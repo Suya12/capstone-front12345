@@ -4,10 +4,32 @@ import "./Ocr_compare.css";
 import { useNavigate, useLocation } from "react-router-dom";
 import FieldBlock from "../component/FieldBlock";
 
+// base64 이미지를 data URL로 변환하는 헬퍼
+const toDataUrl = (base64) => base64 ? `data:image/png;base64,${base64}` : null;
+
 export default function Ocr_compare() {
   const navigate = useNavigate();
   const location = useLocation();
   const { claim, index } = location.state || {};
+
+  // 크롭 이미지들 (claim에서 가져옴)
+  const cropImages = {
+    insuredName: toDataUrl(claim?.insured_name_crop),
+    insuredPhone: toDataUrl(claim?.insured_contact_crop),
+    insuredId: toDataUrl(claim?.insured_ssn_crop),
+    insuredCarrier: toDataUrl(claim?.insured_carrier_crop),
+    insuredCompany: toDataUrl(claim?.insured_insurance_company_crop),
+    beneficiaryName: toDataUrl(claim?.beneficiary_name_crop),
+    beneficiaryPhone: toDataUrl(claim?.beneficiary_contact_crop),
+    beneficiaryId: toDataUrl(claim?.beneficiary_ssn_crop),
+    beneficiaryCarrier: toDataUrl(claim?.beneficiary_carrier_crop),
+    accountBank: toDataUrl(claim?.payment_bank_crop),
+    accountHolder: toDataUrl(claim?.payment_account_holder_crop),
+    accountNumber: toDataUrl(claim?.payment_account_number_crop),
+  };
+
+  // 원본 전체 이미지
+  const originalImage = toDataUrl(claim?.request_image_base64) || "/원본.png";
 
   // 확대보기
   const [zoomOpen, setZoomOpen] = useState(false);
@@ -15,17 +37,20 @@ export default function Ocr_compare() {
 
   // 폼 데이터
   const [form, setForm] = useState(() => ({
-    insuredName: claim?.name || "홍길동",
-    insuredPhone: claim?.phone || "010-6338-0694",
-    insuredId: claim?.ssn || "900115-1533112",
-    insuredCompany: claim?.company || "라이나 생명",
+    insuredName: claim?.insured_name || "홍길동",
+    insuredPhone: claim?.insured_contact || "010-6338-0694",
+    insuredId: claim?.insured_ssn || "900115-1533112",
+    insuredCarrier: claim?.insured_carrier || "SKT",
+    insuredCompany: claim?.insured_insurance_company || "라이나 생명",
 
-    beneficiaryName: "",
-    beneficiaryPhone: "",
-    beneficiaryId: "",
+    beneficiaryName: claim?.beneficiary_name || "",
+    beneficiaryPhone: claim?.beneficiary_contact || "",
+    beneficiaryId: claim?.beneficiary_ssn || "",
+    beneficiaryCarrier: claim?.beneficiary_carrier || "",
 
-    accountBank: "농협은행",
-    accountNumber: "",
+    accountBank: claim?.payment_bank || "농협은행",
+    accountNumber: claim?.payment_account_number || "",
+    accountHolder: claim?.payment_account_holder || "",
   }));
 
   // 되돌리기용 히스토리
@@ -148,11 +173,18 @@ export default function Ocr_compare() {
 
     const updatedClaim = {
       ...(claim || {}),
-      name: form.insuredName,
-      phone: form.insuredPhone,
-      ssn: form.insuredId,
-      company: form.insuredCompany,
-      type: claim?.type || "치아보험",
+      insured_name: form.insuredName,
+      insured_contact: form.insuredPhone,
+      insured_ssn: form.insuredId,
+      insured_carrier: form.insuredCarrier,
+      insured_insurance_company: form.insuredCompany,
+      beneficiary_name: form.beneficiaryName,
+      beneficiary_contact: form.beneficiaryPhone,
+      beneficiary_ssn: form.beneficiaryId,
+      beneficiary_carrier: form.beneficiaryCarrier,
+      payment_bank: form.accountBank,
+      payment_account_number: form.accountNumber,
+      payment_account_holder: form.accountHolder,
     };
 
     alert("저장 완료!");
@@ -185,7 +217,7 @@ export default function Ocr_compare() {
               확대보기
             </button>
           </div>
-          <img src="/원본.png" alt="원본 이미지" />
+          <img src={originalImage} alt="원본 이미지" />
         </div>
 
         {/* 오른쪽: 수정 영역 */}
@@ -201,7 +233,7 @@ export default function Ocr_compare() {
 
             <FieldBlock
               label="성명"
-              img="/이름.png"
+              img={cropImages.insuredName}
               value={form.insuredName}
               onChange={(v) => handleChangeAndValidate("insuredName", v)}
               placeholder="피보험자 이름"
@@ -209,7 +241,7 @@ export default function Ocr_compare() {
 
             <FieldBlock
               label="연락처"
-              img="/피보험자연락처.png"
+              img={cropImages.insuredPhone}
               value={form.insuredPhone}
               onChange={(v) => handleChangeAndValidate("insuredPhone", v)}
               onBlur={() =>
@@ -224,7 +256,7 @@ export default function Ocr_compare() {
 
             <FieldBlock
               label="주민등록번호"
-              img="/주민등록번호.png"
+              img={cropImages.insuredId}
               value={form.insuredId}
               onChange={(v) => handleChangeAndValidate("insuredId", v)}
               onBlur={() =>
@@ -238,8 +270,16 @@ export default function Ocr_compare() {
             />
 
             <FieldBlock
+              label="통신사"
+              img={cropImages.insuredCarrier}
+              value={form.insuredCarrier}
+              onChange={(v) => handleChangeAndValidate("insuredCarrier", v)}
+              placeholder="예: SKT, KT, LG U+"
+            />
+
+            <FieldBlock
               label="보험사"
-              img="/보험사.png"
+              img={cropImages.insuredCompany}
               value={form.insuredCompany}
               onChange={(v) => handleChangeAndValidate("insuredCompany", v)}
             />
@@ -265,7 +305,7 @@ export default function Ocr_compare() {
 
             <FieldBlock
               label="성명"
-              img="/피보험자연락처.png"
+              img={cropImages.beneficiaryName}
               value={form.beneficiaryName}
               onChange={(v) => handleChangeAndValidate("beneficiaryName", v)}
               placeholder="수익자 성명"
@@ -273,7 +313,7 @@ export default function Ocr_compare() {
 
             <FieldBlock
               label="연락처"
-              img="/피보험자연락처.png"
+              img={cropImages.beneficiaryPhone}
               value={form.beneficiaryPhone}
               onChange={(v) => handleChangeAndValidate("beneficiaryPhone", v)}
               onBlur={() =>
@@ -288,7 +328,7 @@ export default function Ocr_compare() {
 
             <FieldBlock
               label="주민등록번호"
-              img="/피보험자연락처.png"
+              img={cropImages.beneficiaryId}
               value={form.beneficiaryId}
               onChange={(v) => handleChangeAndValidate("beneficiaryId", v)}
               onBlur={() =>
@@ -300,6 +340,14 @@ export default function Ocr_compare() {
               placeholder="######-#######"
               error={errors.beneficiaryId}
             />
+
+            <FieldBlock
+              label="통신사"
+              img={cropImages.beneficiaryCarrier}
+              value={form.beneficiaryCarrier}
+              onChange={(v) => handleChangeAndValidate("beneficiaryCarrier", v)}
+              placeholder="예: SKT, KT, LG U+"
+            />
           </div>
 
           {/* 계좌 정보 */}
@@ -307,19 +355,27 @@ export default function Ocr_compare() {
             <h3>계좌 정보</h3>
 
             <FieldBlock
-              label="계좌번호"
-              img="/피보험자연락처.png"
-              value={form.accountNumber}
-              onChange={(v) => handleChangeAndValidate("accountNumber", v)}
-              placeholder="000-0000-0000"
-            />
-
-            <FieldBlock
               label="은행명"
-              img="/피보험자연락처.png"
+              img={cropImages.accountBank}
               value={form.accountBank}
               onChange={(v) => handleChangeAndValidate("accountBank", v)}
               placeholder="예: 국민은행"
+            />
+
+            <FieldBlock
+              label="예금주"
+              img={cropImages.accountHolder}
+              value={form.accountHolder}
+              onChange={(v) => handleChangeAndValidate("accountHolder", v)}
+              placeholder="예금주 성함"
+            />
+
+            <FieldBlock
+              label="계좌번호"
+              img={cropImages.accountNumber}
+              value={form.accountNumber}
+              onChange={(v) => handleChangeAndValidate("accountNumber", v)}
+              placeholder="000-0000-0000"
             />
           </div>
 
@@ -396,7 +452,7 @@ export default function Ocr_compare() {
               </div>
             </div>
             <img
-              src="/원본.png"
+              src={originalImage}
               alt="원본 확대"
               className="lightbox-img"
               style={{ width: `${zoomLevel * 100}%`, cursor: "zoom-in" }}

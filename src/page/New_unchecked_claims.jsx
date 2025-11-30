@@ -6,7 +6,16 @@ import { api } from "../lib/api"; // ✅ axios 인스턴스 (src/lib/api.js)
 
 // ----- localStorage 유틸 -----
 const HIDDEN_KEY = "hiddenClaimKeys_v1";
-const POLL_INTERVAL = 10000; // 5초
+const POLL_INTERVAL = 2000; // 2초
+
+// 필드와 크롭 이미지 매핑
+const FIELD_CROP_MAP = {
+  insured_name: "insured_name_crop",
+  insured_ssn: "insured_ssn_crop",
+  insured_contact: "insured_contact_crop",
+  insured_carrier: "insured_carrier_crop",
+  insured_insurance_company: "insured_insurance_company_crop",
+};
 
 function getHiddenKeys() {
   try {
@@ -20,12 +29,13 @@ function setHiddenKeys(arr) {
   localStorage.setItem(HIDDEN_KEY, JSON.stringify(Array.from(new Set(arr))));
 }
 
-// 각 항목을 고유하게 식별할 키 생성 (id > ssn > 조합)
+// 각 항목을 고유하게 식별할 키 생성 (id > client_request_id > insured_ssn > 조합)
 function claimKey(c) {
   return (
     c?.id ??
-    c?.ssn ??
-    `${c?.name ?? ""}|${c?.phone ?? ""}|${c?.company ?? ""}|${c?.type ?? ""}`
+    c?.client_request_id ??
+    c?.insured_ssn ??
+    `${c?.insured_name ?? ""}|${c?.insured_contact ?? ""}|${c?.insured_insurance_company ?? ""}`
   );
 }
 
@@ -33,8 +43,22 @@ export default function NewUncheckedClaims() {
   const [claimData, setClaimData] = useState([]);
   const [loading, setLoading] = useState(true);
   const [activeRow, setActiveRow] = useState(null);
+  const [selectedCrop, setSelectedCrop] = useState(null); // { field, image, value }
   const navigate = useNavigate();
   const location = useLocation();
+
+  // 셀 클릭 시 크롭 이미지 표시
+  const handleCellClick = (item, fieldName) => {
+    const cropKey = FIELD_CROP_MAP[fieldName];
+    const cropImage = item[cropKey];
+    if (cropImage) {
+      setSelectedCrop({
+        field: fieldName,
+        image: cropImage,
+        value: item[fieldName],
+      });
+    }
+  };
 
   // ✅ API 경로 (baseURL은 api.js에서 자동 설정)
   const LIST_API = `/api/claims?status=unchecked`;
@@ -63,35 +87,19 @@ export default function NewUncheckedClaims() {
         rows = [
           {
             id: 1,
-            name: "홍길동",
-            ssn: "123456-7890123",
-            phone: "010-5787-2222",
-            company: "라이나 생명",
-            type: "치아보험",
-          },
-          {
-            id: 2,
-            name: "김철수",
-            ssn: "981010-1234567",
-            phone: "010-3333-4444",
-            company: "삼성화재",
-            type: "실손보험",
-          },
-          {
-            id: 3,
-            name: "이영희",
-            ssn: "010101-3456789",
-            phone: "010-1111-2222",
-            company: "DB손해보험",
-            type: "암보험",
-          },
-          {
-            id: 4,
-            name: "박민수",
-            ssn: "900101-1234567",
-            phone: "010-9999-8888",
-            company: "현대해상",
-            type: "실손보험",
+            client_request_id: "test_req_001",
+            insured_name: "홍길동",
+            insured_ssn: "123456-7890123",
+            insured_contact: "010-5787-2222",
+            insured_carrier: "SKT",
+            insured_insurance_company: "라이나 생명",
+            beneficiary_name: "홍길동",
+            beneficiary_ssn: "123456-7890123",
+            beneficiary_contact: "010-5787-2222",
+            beneficiary_carrier: "SKT",
+            payment_bank: "신한은행",
+            payment_account_holder: "홍길동",
+            payment_account_number: "110-123-456789",
           },
         ];
       }
@@ -108,8 +116,6 @@ export default function NewUncheckedClaims() {
       setLoading(false);
     }
   };
-
-  
 
   useEffect(() => {
     fetchClaims(); // 최초 1회 로딩
@@ -190,8 +196,8 @@ export default function NewUncheckedClaims() {
               <th>피보험자 이름</th>
               <th>주민번호</th>
               <th>연락처</th>
+              <th>통신사</th>
               <th>보험사</th>
-              <th>청구유형</th>
             </tr>
           </thead>
           <tbody>
@@ -200,11 +206,36 @@ export default function NewUncheckedClaims() {
                 key={claimKey(item)}
                 onMouseEnter={() => setActiveRow(index)}
               >
-                <td>{item.name}</td>
-                <td>{item.ssn}</td>
-                <td>{item.phone}</td>
-                <td>{item.company}</td>
-                <td>{item.type}</td>
+                <td
+                  onClick={() => handleCellClick(item, "insured_name")}
+                  className={item.insured_name_crop ? "clickable-cell" : ""}
+                >
+                  {item.insured_name}
+                </td>
+                <td
+                  onClick={() => handleCellClick(item, "insured_ssn")}
+                  className={item.insured_ssn_crop ? "clickable-cell" : ""}
+                >
+                  {item.insured_ssn}
+                </td>
+                <td
+                  onClick={() => handleCellClick(item, "insured_contact")}
+                  className={item.insured_contact_crop ? "clickable-cell" : ""}
+                >
+                  {item.insured_contact}
+                </td>
+                <td
+                  onClick={() => handleCellClick(item, "insured_carrier")}
+                  className={item.insured_carrier_crop ? "clickable-cell" : ""}
+                >
+                  {item.insured_carrier}
+                </td>
+                <td
+                  onClick={() => handleCellClick(item, "insured_insurance_company")}
+                  className={item.insured_insurance_company_crop ? "clickable-cell" : ""}
+                >
+                  {item.insured_insurance_company}
+                </td>
               </tr>
             ))}
           </tbody>
@@ -262,6 +293,24 @@ export default function NewUncheckedClaims() {
           숨긴 항목 초기화
         </button>
       </div>
+
+      {/* 크롭 이미지 모달 */}
+      {selectedCrop && (
+        <div className="crop-modal-overlay" onClick={() => setSelectedCrop(null)}>
+          <div className="crop-modal" onClick={(e) => e.stopPropagation()}>
+            <button className="crop-modal-close" onClick={() => setSelectedCrop(null)}>
+              &times;
+            </button>
+            <h4 className="crop-modal-title">OCR 크롭 이미지</h4>
+            <p className="crop-modal-value">인식 값: {selectedCrop.value}</p>
+            <img
+              src={`data:image/png;base64,${selectedCrop.image}`}
+              alt="크롭 이미지"
+              className="crop-modal-image"
+            />
+          </div>
+        </div>
+      )}
     </div>
   );
 }
