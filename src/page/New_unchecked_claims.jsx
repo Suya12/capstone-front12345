@@ -24,8 +24,7 @@ function claimKey(c) {
     c?.id ??
     c?.client_request_id ??
     c?.insured_ssn ??
-    `${c?.insured_name ?? ""}|${c?.insured_contact ?? ""}|${
-      c?.insured_insurance_company ?? ""
+    `${c?.insured_name ?? ""}|${c?.insured_contact ?? ""}|${c?.insured_insurance_company ?? ""
     }`
   );
 }
@@ -82,7 +81,7 @@ function mapApiItemToRow(item) {
       "수익자 주민등록번호": "beneficiary_ssn",
       "수익자 연락처": "beneficiary_contact",
       "수익자 통신사": "beneficiary_carrier",
-      
+
       "보험금 지급 은행명": "payment_bank_name",
       "보험금 지급 계좌번호": "payment_account_number",
       "보험금 지급 예금주 성함": "payment_account_holder",
@@ -168,7 +167,7 @@ export default function NewUncheckedClaims() {
         });
 
         const data = res.data;
-        console.log("RAW /claims =", data);    
+        console.log("RAW /claims =", data);
 
         if (Array.isArray(data?.items)) {
           rows = data.items.map(mapApiItemToRow);
@@ -257,6 +256,38 @@ export default function NewUncheckedClaims() {
       });
     }
   };
+
+  // ❌ 삭제 처리 (낙관적 업데이트)
+  const handleDelete = async (idx, item) => {
+    const key = claimKey(item);
+    const idOrKey = item.client_request_id ?? item.id ?? key;
+
+    // 화면에서 먼저 제거
+    setClaimData(prev => prev.filter((_, i) => i !== idx));
+    if (activeRow === idx) setActiveRow(null);
+
+    try {
+      // 👉 백엔드 API 맞춰서 수정 (예: DELETE /claims/:id)
+      const res = await api.delete(`/claims/${encodeURIComponent(idOrKey)}`);
+
+      if (res.status === 200) {
+        console.log("🗑 삭제 성공");
+      } else {
+        throw new Error("Unexpected response");
+      }
+    } catch (err) {
+      console.error("❌ 삭제 실패:", err?.response?.data || err.message);
+      alert("삭제 실패 — 다시 시도해주세요.");
+
+      // 실패하면 롤백
+      setClaimData(prev => {
+        const copy = [...prev];
+        copy.splice(idx, 0, item);
+        return copy;
+      });
+    }
+  };
+
 
   if (loading) return <p>로딩 중...</p>;
 
@@ -367,6 +398,17 @@ export default function NewUncheckedClaims() {
                 onClick={() => handleConfirm(index, item)}
               >
                 확정
+              </button>
+              <button
+                className="delete-btn"
+                style={{
+                  opacity: activeRow === index ? 1 : 0,
+                  pointerEvents: activeRow === index ? "auto" : "none",
+                  transition: "opacity 0.25s ease",
+                }}
+                onClick={() => handleDelete(index, item)}
+              >
+                삭제
               </button>
             </div>
           ))}
